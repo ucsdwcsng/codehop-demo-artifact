@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CodeHop Simulator</title>
+<meta name="description" content="Wideband simulation of the CodeHop satellite-IoT uplink with a LoRa baseline.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231a1a19'/%3E%3Cpath d='M5 22h4V10h4v8h4V7h4v11h4v-6h2' fill='none' stroke='%233987e5' stroke-width='2.4' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<script>
+  try {
+    const saved = localStorage.getItem("codehop-theme");
+    const light = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.dataset.theme = saved || (light ? "light" : "dark");
+  } catch (e) { /* default dark */ }
+</script>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 22h4V10h4v8h4V7h4v11h4v-6h2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    <h1>CodeHop Simulator</h1>
+  </div>
+  <div class="top-actions">
+    <span id="status" class="status" role="status" aria-live="polite">loading…</span>
+    <button id="theme" class="icon-btn" title="Theme" aria-label="Toggle light or dark theme">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="rail" id="rail">
+    <div class="run-row">
+      <button id="run" class="primary">Run</button>
+      <button id="reseed" class="ghost">New seed</button>
+      <button id="reset" class="ghost">Defaults</button>
+      <label class="check"><input type="checkbox" id="autorun" checked> Auto</label>
+    </div>
+    <form id="knobs" autocomplete="off"></form>
+  </aside>
+
+  <main class="main">
+    <section class="kpis" id="kpis" aria-label="Decode results"></section>
+
+    <section class="panel spec-panel">
+      <div class="panel-head">
+        <div>
+          <h2>Spectrogram</h2>
+          <p class="keys"><span class="key good">Decoded</span> <span class="key bad">Error</span> <span class="key pilot">Pilot</span> <span class="key miss">Missed</span></p>
+        </div>
+        <div class="head-ctl">
+          <div class="seg" id="view-seg" role="tablist" aria-label="Spectrogram content">
+            <button data-view="clean" class="on" role="tab">Clean</button>
+            <button data-view="noisy" role="tab">Noisy</button>
+          </div>
+          <div class="seg" id="rx-seg" role="tablist" aria-label="Receiver">
+            <button data-rx="sic" class="on" role="tab">SIC</button>
+            <button data-rx="tin" role="tab">TIN</button>
+          </div>
+        </div>
+      </div>
+      <div class="spec-wrap">
+        <canvas id="spec" aria-label="Spectrogram"></canvas>
+        <div class="tooltip" id="tip" hidden></div>
+      </div>
+      <div class="peel">
+        <button id="play" class="icon-btn" title="Play" aria-label="Play the SIC peel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path id="play-icon" d="M8 5v14l11-7z" fill="currentColor"/></svg>
+        </button>
+        <div class="peel-track">
+          <input type="range" id="stage" min="0" max="0" value="0" aria-label="SIC peel step">
+          <div class="peel-label"><span id="stage-label">Received</span><span class="peel-ends"><button id="to-rx" class="link">Received</button> · <button id="to-res" class="link">Residual</button></span></div>
+        </div>
+        <label class="dyn">Range <input type="range" id="dyn" min="12" max="60" value="30" aria-label="Spectrogram dynamic range"> <span id="dyn-val">30 dB</span></label>
+      </div>
+    </section>
+
+    <div class="grid-map">
+      <section class="panel map-panel">
+        <div class="panel-head"><h2>Scenario Map</h2></div>
+        <div class="map-wrap"><canvas id="map" aria-label="Map of the satellite and nodes"></canvas><div class="tooltip" id="tip3" hidden></div></div>
+      </section>
+      <section class="panel corr-panel">
+        <div class="panel-head"><h2>Correlation</h2></div>
+        <canvas id="corr" aria-label="Correlation profile"></canvas>
+      </section>
+      <section class="panel pass-panel">
+        <div class="panel-head"><h2>Doppler</h2></div>
+        <canvas id="doppler" aria-label="Doppler over the pass"></canvas>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Nodes</h2></div>
+      <div class="table-wrap"><table id="users"></table></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Sweep <span class="tag" id="sweep-stale" hidden>Stale</span></h2>
+        <div class="sweep-ctl">
+          <label>K grid <input id="kgrid" type="text" spellcheck="false"></label>
+          <label>Frames <input id="fpk" type="number" min="1" max="20" value="2"></label>
+          <button id="sweep" class="primary">Run sweep</button>
+        </div>
+      </div>
+      <div class="legend" id="sweep-legend"></div>
+      <div class="progress" id="sweep-prog" hidden><div></div></div>
+      <div class="spec-wrap"><canvas id="sweepc" aria-label="Recovery versus K"></canvas><div class="tooltip" id="tip2" hidden></div></div>
+      <details class="table-view"><summary>Table</summary><div class="table-wrap"><table id="sweep-table"></table></div></details>
+    </section>
+  </main>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
